@@ -1,10 +1,10 @@
-id = "vasqs/noctalia-habitica"
-name = "Habitica for Noctalia"
+id = "vasqs/habitica"
+name = "Habitica"
 version = "2.0.0"
 plugin_api = 43
 author = "vasqs"
 license = "MIT"
-dependencies = []
+dependencies = ["magick"]
 tags = ["bar", "panel", "service", "productivity", "network"]
 icon = "sword"
 description = "Habitica dashboard in the bar and a panel to score dailies, todos, habits and checklists."

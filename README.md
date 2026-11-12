@@ -1,84 +1,52 @@
-# Habitica for Noctalia
+# Habitica
 
-Habitica for Noctalia brings your Habitica account into the Noctalia bar and a
-panel. A headless service talks to the Habitica API, keeps a local snapshot, and
+Habitica brings your Habitica account into the Noctalia bar and a panel. A
+headless service talks to the Habitica API, keeps a local snapshot, and
 publishes it through `noctalia.state`; the bar widget and panel only read that
 snapshot, so both stay light and always agree.
 
 The default view is intentionally focused: due dailies and open todos are
 first-class, while habits, checklist items, tag filtering, and colorization are
 opt-in. Scoring a daily, todo, habit, or checklist item updates Habitica and
-refreshes the snapshot.
-
-## Features
-
-- Bar widget with the pending count for due dailies and open todos
-- Rich tooltip with player name, level, health, experience, gold, and sync time
-- Panel with account stats, due dailies, open todos, and optional habits
-- Task scoring for dailies, todos, habits, and checklist items
-- Optional habit section, checklist display, and tag filtering
-- Cached snapshot so the panel opens instantly and survives restarts
-- Avatar composited from official Habitica sprite assets
-- Theme colorization for the bar icon and pending badge
+refreshes the snapshot. An avatar is composited from official Habitica sprite
+assets when ImageMagick is available.
 
 ## Plugin
 
 | Field | Value |
 | --- | --- |
-| ID | `vasqs/noctalia-habitica` |
-| Bar widget | `bar` |
-| Panel | `panel` |
-| Service | `service` |
-| Plugin API | `43` (Noctalia 5.4) |
+| ID | `vasqs/habitica` |
+| Entries | Bar widget: `bar`; panel: `panel`; service: `service` |
 
 The `bar` widget shows the pending count and opens the `panel` on left-click.
 Right-click requests a refresh. The headless `service` owns HTTP access, caching,
-avatar compositing, and the published snapshot.
+avatar compositing, and the published snapshot. The `panel` shows account stats,
+task lists, and scoring controls.
 
 ## Requirements
 
 - Noctalia 5.4 or newer (plugin API 43)
 - A Habitica account and an API token
-- Optional: ImageMagick (`magick`) for avatar compositing. Without it the panel
-  shows the `sword` glyph instead of your avatar.
+- `magick` (ImageMagick 7) for avatar compositing. Without it the panel shows
+  the `sword` glyph instead of your avatar; the rest of the plugin keeps
+  working.
 
-Noctalia itself provides `noctalia.http`, `noctalia.state`, and the Luau host
-API; the plugin has no network or library dependencies of its own.
-
-## Installation
-
-1. Install this directory as a Noctalia plugin under the plugin source used by
-   your setup, keeping the folder name `noctalia-habitica`.
-2. Enable `vasqs/noctalia-habitica`.
-3. Add the `bar` widget to a bar (or bind the panel with
-   `noctalia msg panel-toggle vasqs/noctalia-habitica:panel`).
-4. Open the plugin settings and fill in your Habitica User ID and API Token.
-
-If you use a local plugin source, add the parent directory once:
-
-```sh
-noctalia msg plugins source add local path /path/to/noctalia-plugins
-noctalia msg plugins enable vasqs/noctalia-habitica
-```
-
-The plugin writes its cache under the Noctalia plugin data directory and keeps
-credentials in plugin settings, not in the repository.
-
-## Getting Your Habitica User ID And API Token
-
-1. Sign in to Habitica.
-2. Open `Settings`.
-3. Open the `API` section.
-4. Copy the `User ID` and `API Token`.
-5. Paste both values into the Noctalia Habitica plugin settings.
-
-Requests send these headers:
-
-- `x-api-user`
-- `x-api-key`
-- `x-client: <user-id>-noctalia-habitica`
+Noctalia provides `noctalia.http`, `noctalia.state`, and the Luau host API, so
+the plugin has no library dependencies of its own.
 
 ## Usage
+
+### Install and enable
+
+Install **Habitica** from the Noctalia plugin store, or enable it from a
+configured plugin source:
+
+```sh
+noctalia msg plugins enable vasqs/habitica
+```
+
+Then add the `bar` widget to a bar and open the plugin settings to fill in your
+Habitica User ID and API Token.
 
 ### Bar widget
 
@@ -95,6 +63,12 @@ icon style are controlled in settings.
 
 ### Panel
 
+Open the panel from the widget or with:
+
+```sh
+noctalia msg panel-toggle vasqs/habitica:panel
+```
+
 The panel shows:
 
 - player name, class, level, HP, XP, MP, and gold;
@@ -107,24 +81,19 @@ Scoring a task sends the matching Habitica request and refreshes the snapshot.
 Tag filtering narrows dailies, todos, and habits to tasks carrying the selected
 Habitica tag UUID. The panel's refresh button forces an immediate sync.
 
-### IPC
+### Habitica credentials
 
-```sh
-# Open or close the panel
-noctalia msg panel-toggle vasqs/noctalia-habitica:panel
+1. Sign in to Habitica.
+2. Open `Settings`.
+3. Open the `API` section.
+4. Copy the `User ID` and `API Token`.
+5. Paste both values into the Habitica plugin settings.
 
-# Force a refresh
-noctalia msg plugin vasqs/noctalia-habitica:service all refresh
+Requests send these headers:
 
-# Score a task: score <task-id> <up|down>
-noctalia msg plugin vasqs/noctalia-habitica:service all score TASK_ID up
-
-# Score a checklist item: checklist <task-id> <item-id>
-noctalia msg plugin vasqs/noctalia-habitica:service all checklist TASK_ID ITEM_ID
-
-# Toggle the panel from the service
-noctalia msg plugin vasqs/noctalia-habitica:service all toggle
-```
+- `x-api-user`
+- `x-api-key`
+- `x-client: <user-id>-noctalia-habitica`
 
 ## Settings
 
@@ -148,44 +117,36 @@ Settings are plugin-level, so the bar widget, panel, and service share them.
 | `colorization_badge` | select | `error` | Color role for the pending badge. |
 | `colorization_badge_text` | select | `on_error` | Text color role for the pending badge. |
 
-## Avatar
+## IPC
 
-Habitica avatars are a stack of transparent sprites. The service downloads the
-visible layers once per avatar change and composites them with ImageMagick into
-`avatar.png` inside the plugin data directory. If `magick` is unavailable or
-compositing fails, the panel falls back to the `sword` glyph; the rest of the
-plugin keeps working.
+```sh
+# Open or close the panel
+noctalia msg panel-toggle vasqs/habitica:panel
 
-## Privacy And Security
+# Force a refresh
+noctalia msg plugin vasqs/habitica:service all refresh
 
-- The API token is required to read your account and is stored in Noctalia
-  plugin settings.
-- The plugin does not intentionally log the token.
-- The cache contains account and task data. It lives in the Noctalia plugin data
-  directory, not in the repository.
-- The plugin only reads account/task data and scores supported tasks. It does not
-  create, edit, or delete Habitica tasks.
+# Score a task: score <task-id> <up|down>
+noctalia msg plugin vasqs/habitica:service all score TASK_ID up
 
-## Troubleshooting
+# Score a checklist item: checklist <task-id> <item-id>
+noctalia msg plugin vasqs/habitica:service all checklist TASK_ID ITEM_ID
 
-- **Configuration error**: confirm both `habitica_user_id` and
-  `habitica_api_token` are set, then refresh.
-- **Requests fail**: check the network and confirm the token is still valid in
-  Habitica.
-- **No avatar**: install ImageMagick (`magick`) or ignore the sword fallback;
-  avatar layers are fetched on the next successful sync.
-- **Tag filter hides everything**: clear `selected_tag_id` or paste a valid
-  Habitica tag UUID.
-- **Stale data**: force a sync with the panel refresh button or
-  `noctalia msg plugin vasqs/noctalia-habitica:service all refresh`.
+# Toggle the panel from the service
+noctalia msg plugin vasqs/habitica:service all toggle
+```
 
-## API Reference
+## Notes
 
-The plugin uses the public Habitica API:
+### Network and files
 
-- <https://habitica.com/apidoc/>
+The service calls the public Habitica API endpoints listed below, and downloads
+the sprite images for the visible avatar layers from Habitica's asset host. It
+writes `habitica.json` (the task and account snapshot) and the downloaded
+sprites, plus the composited `avatar.png`, under the Noctalia plugin data
+directory. Credentials live in Noctalia plugin settings, not in the repository.
 
-Endpoints currently used:
+Endpoints used:
 
 - `GET /api/v3/user?userFields=stats,profile,preferences,items,notifications`
 - `GET /api/v3/tasks/user?type=dailys`
@@ -194,6 +155,36 @@ Endpoints currently used:
 - `GET /api/v3/tags`
 - `POST /api/v3/tasks/:taskId/score/:direction`
 - `POST /api/v3/tasks/:taskId/checklist/:itemId/score`
+
+### Avatar
+
+Habitica avatars are a stack of transparent sprites. The service downloads the
+visible layers once per avatar change and composites them with `magick` into
+`avatar.png` inside the plugin data directory. If `magick` is unavailable or
+compositing fails, the panel falls back to the `sword` glyph.
+
+### Privacy and security
+
+- The API token is required to read your account and is stored in Noctalia
+  plugin settings.
+- The plugin does not intentionally log the token.
+- The cache contains account and task data and lives in the Noctalia plugin
+  data directory, not in the repository.
+- The plugin only reads account/task data and scores supported tasks. It does not
+  create, edit, or delete Habitica tasks.
+
+### Troubleshooting
+
+- **Configuration error**: confirm both `habitica_user_id` and
+  `habitica_api_token` are set, then refresh.
+- **Requests fail**: check the network and confirm the token is still valid in
+  Habitica.
+- **No avatar**: install `magick` or ignore the sword fallback; avatar layers
+  are fetched on the next successful sync.
+- **Tag filter hides everything**: clear `selected_tag_id` or paste a valid
+  Habitica tag UUID.
+- **Stale data**: force a sync with the panel refresh button or
+  `noctalia msg plugin vasqs/habitica:service all refresh`.
 
 ## License
 

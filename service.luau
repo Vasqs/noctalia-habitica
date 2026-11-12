@@ -13,7 +13,7 @@ local STATE_KEY = "habitica_snapshot"
 local REV_KEY = "habitica_rev"
 local COMMAND_KEY = "habitica_command"
 
-local PANEL_ID = "vasqs/noctalia-habitica:panel"
+local PANEL_ID = "vasqs/habitica:panel"
 
 -- A refresh that never calls back must not leave the service stuck.
 local STUCK_REFRESH_SEC = 45
