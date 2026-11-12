@@ -1,113 +1,192 @@
 # Habitica for Noctalia
 
-Habitica for Noctalia is a compact productivity plugin that brings your Habitica account into Noctalia Shell. It shows due work in the bar, exposes a richer panel with stats and tasks, and lets you score tasks without leaving the desktop shell.
+Habitica for Noctalia brings your Habitica account into the Noctalia bar and a
+panel. A headless service talks to the Habitica API, keeps a local snapshot, and
+publishes it through `noctalia.state`; the bar widget and panel only read that
+snapshot, so both stay light and always agree.
 
-The current UI stays intentionally focused: due dailies and open todos are first-class, while habits, checklist items, tag filtering, and colorization remain opt-in so the default experience stays light.
+The default view is intentionally focused: due dailies and open todos are
+first-class, while habits, checklist items, tag filtering, and colorization are
+opt-in. Scoring a daily, todo, habit, or checklist item updates Habitica and
+refreshes the snapshot.
 
 ## Features
 
-- Bar widget with pending task count for due dailies and open todos
-- Panel with player name, level, health, mana, experience, and gold
-- Manual refresh plus throttled background refresh
+- Bar widget with the pending count for due dailies and open todos
+- Rich tooltip with player name, level, health, experience, gold, and sync time
+- Panel with account stats, due dailies, open todos, and optional habits
 - Task scoring for dailies, todos, habits, and checklist items
-- Optional habit section
-- Optional checklist item display
-- Optional tag-based filtering
-- Avatar rendering from official Habitica sprite assets
+- Optional habit section, checklist display, and tag filtering
+- Cached snapshot so the panel opens instantly and survives restarts
+- Avatar composited from official Habitica sprite assets
+- Theme colorization for the bar icon and pending badge
 
-## Repository
+## Plugin
 
-This standalone repository is intended for direct installation and review:
+| Field | Value |
+| --- | --- |
+| ID | `vasqs/noctalia-habitica` |
+| Bar widget | `bar` |
+| Panel | `panel` |
+| Service | `service` |
+| Plugin API | `43` (Noctalia 5.4) |
 
-- https://github.com/Vasqs/noctalia-habitica
+The `bar` widget shows the pending count and opens the `panel` on left-click.
+Right-click requests a refresh. The headless `service` owns HTTP access, caching,
+avatar compositing, and the published snapshot.
 
-The community registry submission is prepared separately for:
+## Requirements
 
-- https://github.com/noctalia-dev/noctalia-plugins
+- Noctalia 5.4 or newer (plugin API 43)
+- A Habitica account and an API token
+- Optional: ImageMagick (`magick`) for avatar compositing. Without it the panel
+  shows the `sword` glyph instead of your avatar.
 
-## Local Installation
+Noctalia itself provides `noctalia.http`, `noctalia.state`, and the Luau host
+API; the plugin has no network or library dependencies of its own.
 
-1. Copy or symlink this repository directory into the plugin location used by your Noctalia installation as `habitica`.
-2. Enable the `habitica` plugin in Noctalia.
-3. Open the plugin settings and fill in your Habitica credentials.
+## Installation
 
-If you are preparing a community submission, package from Git-tracked files only. Local state files such as `settings.json` and `cache/` are intentionally ignored so you can keep your local credentials and cached Habitica data without publishing them.
+1. Install this directory as a Noctalia plugin under the plugin source used by
+   your setup, keeping the folder name `noctalia-habitica`.
+2. Enable `vasqs/noctalia-habitica`.
+3. Add the `bar` widget to a bar (or bind the panel with
+   `noctalia msg panel-toggle vasqs/noctalia-habitica:panel`).
+4. Open the plugin settings and fill in your Habitica User ID and API Token.
 
-## Community Submission Packaging
+If you use a local plugin source, add the parent directory once:
 
-Include these files in the publishable plugin package:
+```sh
+noctalia msg plugins source add local path /path/to/noctalia-plugins
+noctalia msg plugins enable vasqs/noctalia-habitica
+```
 
-- `manifest.json`
-- `Main.qml`
-- `BarWidget.qml`
-- `Panel.qml`
-- `Settings.qml`
-- `HabiticaAvatar.qml`
-- `README.md`
-- `LICENSE`
-- `i18n/en.json`
-- `preview.png`
-- `.gitignore`
-
-Keep these local-only files out of community packages and screenshots:
-
-- `settings.json`
-- `cache/`
-- any temporary screenshots, local archives, or credential-bearing notes you created during testing
+The plugin writes its cache under the Noctalia plugin data directory and keeps
+credentials in plugin settings, not in the repository.
 
 ## Getting Your Habitica User ID And API Token
 
 1. Sign in to Habitica.
 2. Open `Settings`.
 3. Open the `API` section.
-4. Copy the `User ID`.
-5. Copy the `API Token`.
-6. Paste both values into the Noctalia Habitica plugin settings.
+4. Copy the `User ID` and `API Token`.
+5. Paste both values into the Noctalia Habitica plugin settings.
 
-The plugin sends the following headers to Habitica:
+Requests send these headers:
 
 - `x-api-user`
 - `x-api-key`
-- `x-client`
+- `x-client: <user-id>-noctalia-habitica`
 
-The `x-client` header is generated as `<user-id>-noctalia-habitica`, which matches Habitica's third-party client header expectations.
+## Usage
 
-## Using It In Noctalia
+### Bar widget
 
-After configuration:
+Left-click opens the panel. Right-click asks the service to refresh and shows a
+short notification. The widget displays:
 
-- the bar widget shows how many due dailies and open todos are currently pending;
-- the panel shows account stats, due dailies, open todos, and optional habits;
-- clicking scoring controls sends the matching Habitica score request and then refreshes the visible data;
-- checklist toggles and tag filtering are available through plugin settings.
+- the number of due dailies plus open todos;
+- a level or player glyph, depending on the bar configuration;
+- an error or configuration state when the service cannot fetch data.
 
-The plugin keeps the current refresh optimization: it avoids unnecessary full refreshes while cached data is still fresh, and it fetches avatar-heavy data less often than basic task data.
+Hover the widget for the tooltip: player name, level, HP, XP, gold, task summary,
+and the last successful sync time. The notification badge, colorization, and
+icon style are controlled in settings.
+
+### Panel
+
+The panel shows:
+
+- player name, class, level, HP, XP, MP, and gold;
+- **Today**: due dailies with completion controls;
+- **Todos**: open todos with completion controls;
+- **Habits** (optional): score up/down controls;
+- checklist rows under dailies and todos when checklist display is enabled.
+
+Scoring a task sends the matching Habitica request and refreshes the snapshot.
+Tag filtering narrows dailies, todos, and habits to tasks carrying the selected
+Habitica tag UUID. The panel's refresh button forces an immediate sync.
+
+### IPC
+
+```sh
+# Open or close the panel
+noctalia msg panel-toggle vasqs/noctalia-habitica:panel
+
+# Force a refresh
+noctalia msg plugin vasqs/noctalia-habitica:service all refresh
+
+# Score a task: score <task-id> <up|down>
+noctalia msg plugin vasqs/noctalia-habitica:service all score TASK_ID up
+
+# Score a checklist item: checklist <task-id> <item-id>
+noctalia msg plugin vasqs/noctalia-habitica:service all checklist TASK_ID ITEM_ID
+
+# Toggle the panel from the service
+noctalia msg plugin vasqs/noctalia-habitica:service all toggle
+```
+
+## Settings
+
+Settings are plugin-level, so the bar widget, panel, and service share them.
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `habitica_user_id` | string | empty | Habitica User ID (`x-api-user`). |
+| `habitica_api_token` | string | empty | Habitica API Token (`x-api-key`). |
+| `refresh_interval` | int | `300` | Background sync interval in seconds (60-3600). |
+| `max_dailies` | int | `8` | Maximum due dailies shown in the panel. |
+| `max_todos` | int | `8` | Maximum open todos shown in the panel. |
+| `show_notification_badge` | bool | `true` | Show the pending count on the bar widget. |
+| `show_habits` | bool | `false` | Add a Habits section with up/down scoring. |
+| `max_habits` | int | `8` | Maximum habits shown when habits are enabled. |
+| `show_checklist_items` | bool | `false` | Show and score checklist rows. |
+| `enable_tag_filter` | bool | `false` | Only show tasks carrying the selected tag. |
+| `selected_tag_id` | string | empty | Habitica tag UUID used by the filter. |
+| `colorization_enabled` | bool | `false` | Apply theme colors to the bar icon and badge. |
+| `colorization_icon` | select | `primary` | Color role for the bar icon. |
+| `colorization_badge` | select | `error` | Color role for the pending badge. |
+| `colorization_badge_text` | select | `on_error` | Text color role for the pending badge. |
+
+## Avatar
+
+Habitica avatars are a stack of transparent sprites. The service downloads the
+visible layers once per avatar change and composites them with ImageMagick into
+`avatar.png` inside the plugin data directory. If `magick` is unavailable or
+compositing fails, the panel falls back to the `sword` glyph; the rest of the
+plugin keeps working.
 
 ## Privacy And Security
 
-- Your Habitica API token is required to access your account data.
+- The API token is required to read your account and is stored in Noctalia
+  plugin settings.
 - The plugin does not intentionally log the token.
-- Local plugin state can contain sensitive data if you configure credentials or let cached API responses accumulate.
-- For publishable copies of the plugin, keep `settings.json` and `cache/` out of version control and out of release archives. You do not need to wipe your local `settings.json` if it is ignored; just do not include ignored files in the package.
-- This plugin is intentionally limited to reading account/task data and scoring supported tasks. It does not create, edit, or delete Habitica tasks in this version.
+- The cache contains account and task data. It lives in the Noctalia plugin data
+  directory, not in the repository.
+- The plugin only reads account/task data and scores supported tasks. It does not
+  create, edit, or delete Habitica tasks.
 
 ## Troubleshooting
 
-- If the plugin shows a configuration error, re-open settings and confirm both `User ID` and `API Token` are filled.
-- If requests fail, verify your network connection and confirm the token is still valid in Habitica.
-- If the panel opens but no avatar appears, refresh once after login so the plugin can fetch avatar-related user fields.
-- If tag filtering hides everything, clear the selected tag ID or paste a valid Habitica tag UUID.
-- If you are packaging the plugin for others, build the package from Git-tracked files only so ignored local state such as `settings.json` and `cache/habitica.json` stays on your machine.
+- **Configuration error**: confirm both `habitica_user_id` and
+  `habitica_api_token` are set, then refresh.
+- **Requests fail**: check the network and confirm the token is still valid in
+  Habitica.
+- **No avatar**: install ImageMagick (`magick`) or ignore the sword fallback;
+  avatar layers are fetched on the next successful sync.
+- **Tag filter hides everything**: clear `selected_tag_id` or paste a valid
+  Habitica tag UUID.
+- **Stale data**: force a sync with the panel refresh button or
+  `noctalia msg plugin vasqs/noctalia-habitica:service all refresh`.
 
 ## API Reference
 
-The plugin uses the public Habitica API documented here:
+The plugin uses the public Habitica API:
 
-- https://habitica.com/apidoc/
+- <https://habitica.com/apidoc/>
 
 Endpoints currently used:
 
-- `GET /api/v3/user?userFields=stats,profile,preferences,notifications`
 - `GET /api/v3/user?userFields=stats,profile,preferences,items,notifications`
 - `GET /api/v3/tasks/user?type=dailys`
 - `GET /api/v3/tasks/user?type=todos`
@@ -116,14 +195,6 @@ Endpoints currently used:
 - `POST /api/v3/tasks/:taskId/score/:direction`
 - `POST /api/v3/tasks/:taskId/checklist/:itemId/score`
 
-## Avatar Assets
+## License
 
-The avatar is rendered locally from official Habitica sprite images hosted by Habitica. The plugin assembles the visible layers from the user's avatar preferences and equipment data instead of shipping copied sprite assets inside the package.
-
-## Submission Notes
-
-- Intended community package name: `Habitica for Noctalia`
-- Minimum Noctalia version: `3.7.1`
-- Current release version: `1.0.0`
-- Standalone repository field points at `https://github.com/Vasqs/noctalia-habitica`
-- For pull requests to `noctalia-dev/noctalia-plugins`, set the manifest repository field to `https://github.com/noctalia-dev/noctalia-plugins`
+MIT. See `LICENSE`.
